@@ -2,8 +2,9 @@
 title: "Does financial support in Australia favour residents born elsewhere?"
 subtitle: "Responding to racism with data"
 author: "Simon Jackson"
-date: "4/28/2018"
-output: html_document
+output:
+  html_document:
+    keep_md: yes
 ---
 
 ```{r knitr_setup, include=FALSE}
@@ -12,7 +13,8 @@ knitr::opts_chunk$set(
   collapse = TRUE,
   warning = FALSE,
   message = FALSE,
-  comment = "#>"
+  comment = "#>",
+  dpi = 300
 )
 ```
 ```{r pkg_setup}
@@ -174,7 +176,7 @@ The data shows that Centrelink payments are made to residents born in Australia 
 
 It's also possible to breakdown these total numbers into the specific payment types shown below ([detailed list here](https://www.humanservices.gov.au/organisations/about-us/publications-and-resources/guide-australian-government-payments)).
 
-```{r}
+```{r payment_type_total}
 thousands <- scales::unit_format(unit = "K", scale = 1e-3, digits = 1)
 
 # Function to convert values to `n` Millions OR thousands (for plotting)
@@ -219,7 +221,7 @@ recipient_plot_data <- country_data %>%
   arrange(payment)
 ```
 
-```{r}
+```{r payment_type_total_v_aus}
 recipient_plot_data %>% 
   ggplot(aes(total, n)) +
     geom_abline(intercept = 0, slope = max(upper_breakdown$p), linetype = 2) +
@@ -259,7 +261,7 @@ The outlier is the [Age Pension](https://www.humanservices.gov.au/individuals/se
 
 The Figure below shows the percentage of Australian-born recipients for each payment type, ignoring totals.
 
-```{r}
+```{r payment_type_p_aus}
 recipient_plot_data %>%   
   ggplot(aes(payment, p_of_total)) +
     # Population marker
@@ -300,4 +302,4 @@ These findings are consistent with the expectation that specific types of paymen
 
 In response to a racist outburst, I sought out publically available data to investigate whether there was evidence that the Australian Government unfairly supported residents based on their country of origin. I found that the percentage of residents born outside Australia has increased over time. However, with the minor exception of the Age pension (which the outraged man was not eligible for), residents born in Australia or elsewhere were fairly represented in the total number of Centrelink payments.
 
-I'd like to thank the Australian Government and Australian Bureau of Statistics for publicising this data and making it possible for me to respond to racism with evidence. If you'd like to reproduce this work or dig into the data yourself, everything from explaining where I got the data to creating this article is freely available on GitHub. You can also keep in touch with me on [LinkedIn](https://www.linkedin.com/in/drsimonj) or by following [\@drsimonj](https://twitter.com/drsimonj) on Twitter.
+I'd like to thank the Australian Government and Australian Bureau of Statistics for publicising this data and making it possible for me to respond to racism with evidence. If you'd like to reproduce this work or dig into the data yourself, everything from explaining where I got the data to creating this article is freely available on [GitHub](https://github.com/drsimonj/analysis-responding_to_australian_racism_with_data). You can also keep in touch with me on [LinkedIn](https://www.linkedin.com/in/drsimonj) or by following [\@drsimonj](https://twitter.com/drsimonj) on Twitter.
