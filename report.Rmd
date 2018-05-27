@@ -1,0 +1,303 @@
+---
+title: "Does financial support in Australia favour residents born elsewhere?"
+subtitle: "Responding to racism with data"
+author: "Simon Jackson"
+date: "4/28/2018"
+output: html_document
+---
+
+```{r knitr_setup, include=FALSE}
+knitr::opts_chunk$set(
+  echo = FALSE,
+  collapse = TRUE,
+  warning = FALSE,
+  message = FALSE,
+  comment = "#>"
+)
+```
+```{r pkg_setup}
+library(tidyverse)
+library(readxl)
+library(stringr)
+library(forcats)
+```
+```{r payment_data_setup}
+#' 
+#' There are some common features about the data. It exists on a sheet called
+#' `"Country of Birth"`, and data begins on the third line. Values are numeric
+#' but intermixed with non-numeric characters (e.g., `<5`).
+#' 
+
+#' Name of sheet that has relevant data
+sheet_name <- "Country of Birth"
+
+#' Get tidy DF of files that have the sheet of interest
+dss_country_files <- read_rds("data/dss_files.rds") %>% 
+  filter(map_lgl(xlsx_path, ~ sheet_name %in% excel_sheets(.)))
+
+#' Read sheet data and get into tidier wide format (including "Totals")
+wide_country_data <- dss_country_files %>% 
+  mutate(data = map(xlsx_path, ~ read_xlsx(., sheet = sheet_name, skip = 2, col_types = "text"))) %>% 
+  unnest(data) %>% 
+  rename(country = `Country of Birth`) %>% 
+  mutate(country = str_to_title(country)) %>% 
+  #rename_all(funs(str_replace_all(str_remove_all(tolower(.), "[^a-zA-Z0-9_ ]"), " ", "_"))) %>% 
+  mutate_at(vars(-(year:country)), funs(as.integer(str_remove_all(., "[^0-9.]")))) %>% 
+  arrange(year, month) %>% 
+  mutate(block = str_c(month.abb[month], year, sep = ", "),
+         block = fct_inorder(block)) %>% 
+  select(year, month, block, country, everything(), -xlsx_path) %>% 
+  mutate(country = if_else(country == "Other Countries", "Other", country))
+
+#' Get into tidy format with totals as separate column
+country_data <- wide_country_data %>% 
+  gather(payment, n, -year, -month, -block, -country) %>% 
+  group_by(block, payment) %>% 
+  mutate(total = n[country == "Total"]) %>% 
+  mutate(p_of_total = n / total) %>% 
+  ungroup() %>% 
+  filter(country != "Total")
+```
+```{r erp_setup}
+# Data direct from ABS download
+abs_population_data <- read_csv("data/abs_downloads/ERP_COB_23042018022328077.csv")
+
+# Tidy data
+population_data <- abs_population_data %>% 
+  transmute(group = str_to_title(`Country of Birth`), year = Time, n = Value)
+
+# Wide data set with Aus n as percentage of total
+percent_of_total <- population_data %>% 
+  spread(group, n) %>% 
+  mutate(aus_percent_of_total = Australia / Total)
+```
+
+Australian racism went viral again this year when a man was filmed abusing staff at [Centrelink](https://www.humanservices.gov.au/individuals/centrelink), which delivers social security payments and services to Australians ([see story here](http://www.news.com.au/national/south-australia/centrelink-to-boost-security-after-racist-rant/news-story/78ed767ca1722691dacaf5257d327cd3)). The man yells that he didn't vote for multiculturalism and that Centrelink is supporting everyone except "Australians". It is distressing to watch, especially as someone whose ancestors found a home in Australia having escaped persecution. Although it's not something he can take back, it's important to know that the man publically apologised and may be suffering from mental illness ([see story here](http://www.newshub.co.nz/home/world/2018/03/australian-man-apologises-for-racist-tirade-at-centrelink.html)).
+
+This topic is still polarising. Many of us want to vilify this man while others may applaud him. But hate begets hate, and fighting fire with fire makes things worse. As a data scientist, the best way I know to respond to the assumptions and stereotypes that fuel racism is with evidence. So, without prejudice, let us investigate the data and uncover to whom the Australian government provides support through Centrelink.
+
+## Centrelink supports Australians, so who are we talking about?
+
+With rare exceptions, **Centrelink supports Australian Residents living in Australia** (see [here](https://www.humanservices.gov.au/individuals/subjects/payments-visa-holders#a3) and [here](https://www.humanservices.gov.au/individuals/enablers/residence-descriptions)). So, the claim that Centrelink supports everyone but Australians in misguided. Perhaps the reference to "[multiculturalism](https://en.wikipedia.org/wiki/Multiculturalism)" can direct us to a more testable question. Centrelink offers support to Australian *residents*, who can be born anywhere in the world. So in this article, I'll use publically accessible data to investigate differences in support given to residents born in Australia or elsewhere.
+
+## Estimated Residential Population
+
+The Figure below shows changes in Australia's [Estimated Residential Population](http://www.abs.gov.au/websitedbs/censushome.nsf/home/factsheetspm?opendocument&navpos=450), which is an official value published by the [Australian Bureau of Statistics](http://www.abs.gov.au/) and used for policy formation and decision making.
+
+```{r erp_over_time}
+# Function to convert values to `n` Millions (for plotting)
+millions <- scales::unit_format(unit = "M", scale = 1e-6, digits = 1)
+
+# Data for % breakdown at min year
+lower_breakdown <- population_data %>% 
+  filter(year == min(year)) %>% 
+  mutate(ymax = n - 5e5,
+         ymin = if_else(group == "Australia", 0, min(n) + 5e5),
+         ymid = (ymax + ymin) / 2,
+         p = if_else(group == "Australia", n / max(n), abs(diff(n)) / max(n))) %>% 
+  select(-group)
+
+# Data for % breakdown at min year
+upper_breakdown <- population_data %>% 
+  filter(year == max(year)) %>% 
+  mutate(ymax = n - 5e5,
+         ymin = if_else(group == "Australia", 0, min(n) + 5e5),
+         ymid = (ymax + ymin) / 2,
+         p = if_else(group == "Australia", n / max(n), abs(diff(n)) / max(n))) %>% 
+  select(-group)
+
+# Plot
+population_data %>% 
+  mutate(group = fct_relevel(group, "Total", "Australia")) %>% 
+  ggplot(aes(year, n)) +
+    # Population Lines with annotations
+    geom_line(aes(group = group, color = group), size = 1.5, lineend = "round") +
+    annotate("text", label = "Total population", x = 1999, y = 22e6, hjust = 1.05) +
+    annotate("curve", x = 1999, xend = 2001, y = 22e6, yend = 20e6, curvature = -0.5,
+             arrow = arrow(angle = 25, length = unit(.2, "cm")), size = .8) +
+    annotate("text", label = "Australian-born",  x = 2006, y = 13.5e6, hjust = -0.05) +
+    annotate("curve", x = 2006, xend = 2004, y = 13.5e6, yend = 14.5e6, curvature = -0.5,
+             arrow = arrow(angle = 25, length = unit(.2, "cm")), size = .8) +
+    # Lower breakdown
+    geom_errorbar(aes(ymin = ymin, ymax = ymax),
+                  width = .18, color = "gray",
+                  data = lower_breakdown) +
+    geom_text(aes(y = ymid, label = scales::percent(p)),
+              size = 3, hjust = -.1, color = "gray",
+              data = lower_breakdown) +
+    # Upper breakdown
+    geom_errorbar(aes(ymin = ymin, ymax = ymax),
+                  width = .18, color = "gray",
+                  data = upper_breakdown) +
+    geom_text(aes(y = ymid, label = scales::percent(p)),
+              size = 3, hjust = 1.1, color = "gray",
+              data = upper_breakdown) +
+    # Overall viz
+    scale_x_continuous(breaks = unique(population_data$year),
+                       minor_breaks = NULL, expand = c(0, 0)) +
+    scale_y_continuous(labels = millions, expand = c(0, 0),
+                       minor_breaks = NULL, limits = c(0, 25e6)) +
+    scale_color_manual(values = c("#0f87f8", "#ffc100")) +
+    theme_minimal() +
+    theme(axis.text.x = element_text(angle = 45, hjust = 1),
+          panel.grid.major.x = element_blank(),
+          legend.position="none") +
+    ggtitle("Australia's Estimated Residential Population",
+            subtitle = "Data from the Australian Bureau of Statistics, ABS.Stat") +
+    labs(x = NULL, y = NULL,
+         caption = "Plot by Simon Jackson, @drsimonj")
+```
+
+The residential population has been increasing from about `r round(max(lower_breakdown$n) * 1e-6)` million in `r min(population_data$year)` to over `r round(max(upper_breakdown$n) * 1e-6)` million in `r max(population_data$year)`. In contrast, the percentage of residents who are Australian-born has decreased from `r scales::percent(max(lower_breakdown$p))` to `r scales::percent(max(upper_breakdown$p))`. This will guide our sense of whether Centrelink payments are unbiased.
+
+As a side note, [Census statistics](http://www.censusdata.abs.gov.au/CensusOutput/copsub2016.nsf/All%20docs%20by%20catNo/Data-in-pictures/$FILE/australiaER.html) reported that the percentage of Australian-born residents in 2016 was 66.7% (`r scales::percent(max(upper_breakdown$p - .667))` lower than the official estimate above). This discrepancy is the result of the the Australian Bureau of Statistics making adjustments that you can learn about [here](http://www.abs.gov.au/websitedbs/censushome.nsf/home/factsheetspm?opendocument&navpos=450).
+
+## All Centrelink Payments
+
+```{r}
+total_payments_summary <- country_data %>% 
+  filter(country == "Australia",
+         year == 2016,
+         month == 12) %>% 
+  summarise(total = sum(total),
+            aus = sum(n),
+            p_aus = aus / total)
+```
+
+Centrelink data is published quarterly and has included country-of-birth breakdowns since December 2016 (which aligns with the last available population data reported above). At this time, Centrelink made `r ceiling(total_payments_summary$total / 1e6)` million payments to Australian residents.
+
+> In December 2016, `r scales::percent(max(upper_breakdown$p))` of Australia's Estimated Residential population was Australian-born. Comparably, `r scales::percent(total_payments_summary$p_aus)` of all Centrelink payments went to Australian-born residents.
+
+The data shows that Centrelink payments are made to residents born in Australia or elsewhere in approximately the same proportions as these groups are represented in the population. The difference of a couple of percent indicates that slightly fewer payments were going to Australian-born residents than we'd expect. As we'll see in the following section, this difference can be almost wholly accounted for by the Age Pension. Still, the difference is small enough to negate the claim that Centrelink substantially favours residents born outside Australia.
+
+## Breakdown by Type
+
+It's also possible to breakdown these total numbers into the specific payment types shown below ([detailed list here](https://www.humanservices.gov.au/organisations/about-us/publications-and-resources/guide-australian-government-payments)).
+
+```{r}
+thousands <- scales::unit_format(unit = "K", scale = 1e-3, digits = 1)
+
+# Function to convert values to `n` Millions OR thousands (for plotting)
+m_or_k <- function(x) {
+  if (x > 1e6)
+    return (millions(x))
+  
+  thousands(x)
+}
+
+country_data %>% 
+  filter(country == "Australia",
+         year == 2016,
+         month == 12) %>% 
+  mutate(payment = str_wrap(payment, 30),
+         payment = fct_reorder(payment, total)) %>% 
+  ggplot(aes(payment, total)) +
+    geom_col(fill = "#0f87f8") +
+    geom_text(aes(label = map_chr(total, m_or_k)),
+              hjust = -.2, size = 2.2) +
+    geom_text(aes(y = total * 1.1, label = "")) +
+    coord_flip() +
+    scale_y_continuous(labels = millions, expand = c(0, 0)) +
+    theme_minimal() +
+    theme(panel.grid = element_blank(),
+          axis.text.y = element_text(size = 6)) +
+    ggtitle("Number of each Centrelink payment in Dec, 2016",
+            subtitle = "Data from the Australian Government, data.gov.au") +
+    labs(x = NULL, y = NULL,
+         caption = "Plot by Simon Jackson, @drsimonj")
+```
+
+It's expected that these payment types, which support specific needs, will show biases in favour of certain groups. For example, [ABSTUDY](https://www.humanservices.gov.au/individuals/services/centrelink/abstudy) supports study costs and housing for Aboriginal or Torres Strait Islander residents. This should mostly go to Australian-born residents. To investigate, we can extend the Figure above to include the number of Australian-born recipients:
+
+```{r}
+recipient_plot_data <- country_data %>% 
+  filter(country == "Australia",
+         year == 2016,
+         month == 12) %>% 
+  mutate(payment = str_wrap(payment, 30),
+         payment = fct_reorder(payment, p_of_total)) %>% 
+  arrange(payment)
+```
+
+```{r}
+recipient_plot_data %>% 
+  ggplot(aes(total, n)) +
+    geom_abline(intercept = 0, slope = max(upper_breakdown$p), linetype = 2) +
+    geom_point(color = "#0f87f8", alpha = .8, size = 3) +
+    geom_text(aes(label = payment), size = 2, hjust = -0.1, check_overlap = TRUE) +
+    geom_text(aes(x = total *1.2), label = "") +
+    #ggrepel::geom_text_repel(aes(label = payment), size = 2) +
+    annotate("text", label = str_wrap("Payments near this line are unbiased", 20),
+             x = 2e6, y = 2e6, hjust = 1, vjust = 1) +
+    annotate("curve", x = 2e6, xend = 2.8e6,
+             y = 2e6, yend = 2.9e6 * max(upper_breakdown$p), curvature = -0.5,
+              arrow = arrow(angle = 25, length = unit(.2, "cm")), size = .8) +
+    theme_minimal() +
+    coord_fixed() +
+    scale_x_continuous(labels = millions) +
+    scale_y_continuous(labels = millions) +
+    labs(x = "Total number of recipients",
+         y = "Number of Australian-born recipients",
+         caption = "Plot by Simon Jackson, @drsimonj") +
+    ggtitle("Total number of Centrelink payments against\nnumber of Australian-born recipients",
+            subtitle = "Data reported for Dec, 2016 from the Australian Government and Bureau of Statistics")
+```
+
+Looking at this Figure, Centrelink payments appear to be fair as most payments fall along the dotted line, which is what we'd expect from a fair system (if `r scales::percent(max(upper_breakdown$p))` of the recipients were Australian-born).
+
+```{r}
+data_without_age_pension <- recipient_plot_data %>% 
+  filter(payment != "Age Pension") %>% 
+  summarise(n = sum(n),
+            total = sum(total),
+            p_aus = n / total)
+```
+
+The outlier is the [Age Pension](https://www.humanservices.gov.au/individuals/services/centrelink/age-pension), which falls below the line. More recipients of the Age Pension are born outside Australia than is reflected in the total population. I cannot say from this data alone why there is some bias in the Age Pension and perhaps a knowledgeable reader can comment. Nonetheless, this discrepancy is large enough that removing the Age Penion from consideration results in `r scales::percent(data_without_age_pension$p_aus)` of all other Centrelink payments going to Australian-born residents, which is almost exactly the proportion in the population.
+
+## Ignoring Total Numbers
+
+The Figure below shows the percentage of Australian-born recipients for each payment type, ignoring totals.
+
+```{r}
+recipient_plot_data %>%   
+  ggplot(aes(payment, p_of_total)) +
+    # Population marker
+    geom_hline(yintercept = max(upper_breakdown$p)) +  
+    annotate("text", label = str_wrap(paste("Estimated percentage of residential population that is Australian-born,", scales::percent(max(upper_breakdown$p))), 30),
+             x = 5, y = max(upper_breakdown$p) + .05,
+             size = 3, hjust = 0, vjust = 1) +
+    annotate("curve", curvature = 0.5,
+             x = 5.2, xend = 8,
+             y = max(upper_breakdown$p) + .15, yend = max(upper_breakdown$p) + .01,
+             arrow = arrow(angle = 25, length = unit(.2, "cm")), size = .8) +
+    # Bars
+    #geom_col(aes(fill = p_of_total), show.legend = FALSE) +
+    geom_col(fill = "#0f87f8", show.legend = FALSE) +
+    # Overall formatting
+    coord_flip() +
+    scale_x_discrete(expand = c(0, 0)) +
+    scale_y_continuous(labels = scales::percent,
+                       expand = c(0, 0), limits = c(0, 1.1)) +
+    theme_minimal() +
+    theme(panel.grid = element_blank(),
+          panel.grid.major.x = element_line(color = "gray", linetype = 3),
+          axis.text.y = element_text(size = 6)) +
+    #scale_fill_continuous(low = "#0f87f8", high = "#ffc100") +
+    ggtitle("Percentage of Centrelink payment recipients\nthat were Australian-born",
+            subtitle = "Data reported for Dec, 2016 from the Australian Government and Bureau of Statistics") +
+    labs(x = NULL, y = NULL,
+         caption = "Plot by Simon Jackson, @drsimonj")
+```
+
+At the upper end of the scale, we can see Australian-born recipients being over-represented for [ABSTUDY](https://www.humanservices.gov.au/individuals/services/centrelink/abstudy) and [Youth Allowance](https://www.humanservices.gov.au/individuals/services/centrelink/youth-allowance) payments. At the lower end, residents who are born outside Australia are over-represented for [Wife](https://www.humanservices.gov.au/individuals/services/centrelink/wife-pension) and Widow [pension](https://www.humanservices.gov.au/individuals/services/centrelink/widow-b-pension) and [allowance](https://www.humanservices.gov.au/individuals/services/centrelink/widow-allowance).
+
+These payments with seemingly large biases (in either direction) have some common features. They have very specific eligibility criteria and are among the least-awarded services (shown in earlier Figures). Furthermore, the granting of payments to new recipients has been stopped in some cases such as the [Wife Pension](https://www.humanservices.gov.au/individuals/services/centrelink/wife-pension).
+
+These findings are consistent with the expectation that specific types of payments *should* be biased in specific ways. It also shows that substantial biases only arise for specific payments that are awarded to very few individuals.
+
+## Conclusion
+
+In response to a racist outburst, I sought out publically available data to investigate whether there was evidence that the Australian Government unfairly supported residents based on their country of origin. I found that the percentage of residents born outside Australia has increased over time. However, with the minor exception of the Age pension (which the outraged man was not eligible for), residents born in Australia or elsewhere were fairly represented in the total number of Centrelink payments.
+
+I'd like to thank the Australian Government and Australian Bureau of Statistics for publicising this data and making it possible for me to respond to racism with evidence. If you'd like to reproduce this work or dig into the data yourself, everything from explaining where I got the data to creating this article is freely available on GitHub. You can also keep in touch with me on [LinkedIn](https://www.linkedin.com/in/drsimonj) or by following [\@drsimonj](https://twitter.com/drsimonj) on Twitter.
