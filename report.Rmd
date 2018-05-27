@@ -74,13 +74,13 @@ percent_of_total <- population_data %>%
   mutate(aus_percent_of_total = Australia / Total)
 ```
 
-Australian racism went viral again this year when a man was filmed abusing staff at [Centrelink](https://www.humanservices.gov.au/individuals/centrelink), which delivers social security payments and services to Australians ([see story here](http://www.news.com.au/national/south-australia/centrelink-to-boost-security-after-racist-rant/news-story/78ed767ca1722691dacaf5257d327cd3)). The man yells that he didn't vote for multiculturalism and that Centrelink is supporting everyone except "Australians". It is distressing to watch, especially as someone whose ancestors found a home in Australia having escaped persecution. Although it's not something he can take back, it's important to know that the man publically apologised and may be suffering from mental illness ([see story here](http://www.newshub.co.nz/home/world/2018/03/australian-man-apologises-for-racist-tirade-at-centrelink.html)).
+Australian racism went viral again this year when a man was filmed abusing staff at [Centrelink](https://www.humanservices.gov.au/individuals/centrelink), which delivers social security payments and services to Australians ([see story here](http://www.news.com.au/national/south-australia/centrelink-to-boost-security-after-racist-rant/news-story/78ed767ca1722691dacaf5257d327cd3)). The man yells that he didn't vote for multiculturalism and that Centrelink is supporting everyone except "Australians". It is distressing to watch, especially as someone whose ancestors found a home in Australia having escaped persecution. Although it's not something he can take back, the man publically apologised and may be suffering from mental illness ([see story here](http://www.newshub.co.nz/home/world/2018/03/australian-man-apologises-for-racist-tirade-at-centrelink.html)).
 
 This topic is still polarising. Many of us want to vilify this man while others may applaud him. But hate begets hate, and fighting fire with fire makes things worse. As a data scientist, the best way I know to respond to the assumptions and stereotypes that fuel racism is with evidence. So, without prejudice, let us investigate the data and uncover to whom the Australian government provides support through Centrelink.
 
 ## Centrelink supports Australians, so who are we talking about?
 
-With rare exceptions, **Centrelink supports Australian Residents living in Australia** (see [here](https://www.humanservices.gov.au/individuals/subjects/payments-visa-holders#a3) and [here](https://www.humanservices.gov.au/individuals/enablers/residence-descriptions)). So, the claim that Centrelink supports everyone but Australians in misguided. Perhaps the reference to "[multiculturalism](https://en.wikipedia.org/wiki/Multiculturalism)" can direct us to a more testable question. Centrelink offers support to Australian *residents*, who can be born anywhere in the world. So in this article, I'll use publically accessible data to investigate differences in support given to residents born in Australia or elsewhere.
+With rare exceptions, **Centrelink supports Australian Residents living in Australia** (see [here](https://www.humanservices.gov.au/individuals/subjects/payments-visa-holders#a3) and [here](https://www.humanservices.gov.au/individuals/enablers/residence-descriptions)). So, the claim that Centrelink supports everyone but Australians in misguided. Perhaps the reference to "[multiculturalism](https://en.wikipedia.org/wiki/Multiculturalism)" can direct us to a more testable question. Centrelink offers support to Australian *residents* who can be born anywhere in the world. So in this article, I'll use publically accessible data to investigate differences in support given to residents born in Australia or elsewhere.
 
 ## Estimated Residential Population
 
@@ -174,7 +174,7 @@ The data shows that Centrelink payments are made to residents born in Australia 
 
 ## Breakdown by Type
 
-It's also possible to breakdown these total numbers into the specific payment types shown below ([detailed list here](https://www.humanservices.gov.au/organisations/about-us/publications-and-resources/guide-australian-government-payments)).
+It's also possible to break down these total numbers into the specific payment types shown below ([detailed list here](https://www.humanservices.gov.au/organisations/about-us/publications-and-resources/guide-australian-government-payments)).
 
 ```{r payment_type_total}
 thousands <- scales::unit_format(unit = "K", scale = 1e-3, digits = 1)
@@ -245,7 +245,7 @@ recipient_plot_data %>%
             subtitle = "Data reported for Dec, 2016 from the Australian Government and Bureau of Statistics")
 ```
 
-Looking at this Figure, Centrelink payments appear to be fair as most payments fall along the dotted line, which is what we'd expect from a fair system (if `r scales::percent(max(upper_breakdown$p))` of the recipients were Australian-born).
+Looking at this Figure, most Centreline payments fall along the dotted line, which is what we'd expect from a fair system (if `r scales::percent(max(upper_breakdown$p))` of the recipients were Australian-born).
 
 ```{r}
 data_without_age_pension <- recipient_plot_data %>% 
@@ -255,7 +255,7 @@ data_without_age_pension <- recipient_plot_data %>%
             p_aus = n / total)
 ```
 
-The outlier is the [Age Pension](https://www.humanservices.gov.au/individuals/services/centrelink/age-pension), which falls below the line. More recipients of the Age Pension are born outside Australia than is reflected in the total population. I cannot say from this data alone why there is some bias in the Age Pension and perhaps a knowledgeable reader can comment. Nonetheless, this discrepancy is large enough that removing the Age Penion from consideration results in `r scales::percent(data_without_age_pension$p_aus)` of all other Centrelink payments going to Australian-born residents, which is almost exactly the proportion in the population.
+The outlier is the [Age Pension](https://www.humanservices.gov.au/individuals/services/centrelink/age-pension), which falls below the line. More recipients of the Age Pension are born outside Australia than is reflected in the total population. I cannot say from this data alone why there is some bias in the Age Pension and perhaps a knowledgeable reader can comment. Nonetheless, this discrepancy is large enough that removing the Age Pension from consideration results in `r scales::percent(data_without_age_pension$p_aus)` of all other Centrelink payments going to Australian-born residents -- almost exactly the proportion in the population.
 
 ## Ignoring Total Numbers
 
@@ -294,7 +294,7 @@ recipient_plot_data %>%
 
 At the upper end of the scale, we can see Australian-born recipients being over-represented for [ABSTUDY](https://www.humanservices.gov.au/individuals/services/centrelink/abstudy) and [Youth Allowance](https://www.humanservices.gov.au/individuals/services/centrelink/youth-allowance) payments. At the lower end, residents who are born outside Australia are over-represented for [Wife](https://www.humanservices.gov.au/individuals/services/centrelink/wife-pension) and Widow [pension](https://www.humanservices.gov.au/individuals/services/centrelink/widow-b-pension) and [allowance](https://www.humanservices.gov.au/individuals/services/centrelink/widow-allowance).
 
-These payments with seemingly large biases (in either direction) have some common features. They have very specific eligibility criteria and are among the least-awarded services (shown in earlier Figures). Furthermore, the granting of payments to new recipients has been stopped in some cases such as the [Wife Pension](https://www.humanservices.gov.au/individuals/services/centrelink/wife-pension).
+These payments with large biases (in either direction) have some common features. They have very specific eligibility criteria and are among the least-awarded services (shown in earlier Figures). Furthermore, the granting of payments to new recipients has been stopped in some cases such as the [Wife Pension](https://www.humanservices.gov.au/individuals/services/centrelink/wife-pension).
 
 These findings are consistent with the expectation that specific types of payments *should* be biased in specific ways. It also shows that substantial biases only arise for specific payments that are awarded to very few individuals.
 
