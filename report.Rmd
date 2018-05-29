@@ -74,6 +74,10 @@ percent_of_total <- population_data %>%
   mutate(aus_percent_of_total = Australia / Total)
 ```
 
+> *Seeing a racist outburst made me wonder whether the Australian Government unfairly supported people based on their background. Using data from the Australian Government and Bureau of Statistics, I couldn't find compelling evidence of this being true. Don't believe me? Read on and see what you make of the data.*
+
+## Australian racism goes viral, again
+
 Australian racism went viral again this year when a man was filmed abusing staff at [Centrelink](https://www.humanservices.gov.au/individuals/centrelink), which delivers social security payments and services to Australians ([see story here](http://www.news.com.au/national/south-australia/centrelink-to-boost-security-after-racist-rant/news-story/78ed767ca1722691dacaf5257d327cd3)). The man yells that he didn't vote for multiculturalism and that Centrelink is supporting everyone except "Australians". It is distressing to watch, especially as someone whose ancestors found a home in Australia having escaped persecution. He can't take it back, but the man did publically apologise and may be suffering from mental illness ([see story here](http://www.newshub.co.nz/home/world/2018/03/australian-man-apologises-for-racist-tirade-at-centrelink.html)).
 
 This topic is still polarising. Many of us want to vilify this man while others may applaud him. But hate begets hate, and fighting fire with fire makes things worse. As a data scientist, the best way I know to respond to the assumptions and stereotypes that fuel racism is with evidence. So, without prejudice, let us investigate the data and uncover to whom the Australian government provides support through Centrelink.
@@ -298,7 +302,7 @@ These payments with large biases (in either direction) have some common features
 
 These findings are consistent with the expectation that specific types of payments *should* be biased in specific ways. It also shows that substantial biases only arise for specific payments that are awarded to very few individuals.
 
-## Conclusion
+## Concluding remarks
 
 In response to a racist outburst, I sought out publically available data to investigate whether there was evidence that the Australian Government unfairly supported residents based on their country of origin. I found that the percentage of residents born outside Australia has increased over time. However, with the minor exception of the Age pension (which the outraged man was not eligible for), residents born in Australia or elsewhere were fairly represented in the total number of Centrelink payments.
 
