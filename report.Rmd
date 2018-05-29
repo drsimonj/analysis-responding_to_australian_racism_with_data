@@ -245,7 +245,7 @@ recipient_plot_data %>%
             subtitle = "Data reported for Dec, 2016 from the Australian Government and Bureau of Statistics")
 ```
 
-Looking at this Figure, most Centreline payments fall along the dotted line, which is what we'd expect from a fair system (if `r scales::percent(max(upper_breakdown$p))` of the recipients were Australian-born).
+Looking at this Figure, most Centrelink payments fall along the dotted line, which is what we'd expect from a fair system (if `r scales::percent(max(upper_breakdown$p))` of the recipients were Australian-born).
 
 ```{r}
 data_without_age_pension <- recipient_plot_data %>% 
